@@ -87,7 +87,7 @@ const MOCK_POSTS: Post[] = [
     caption: 'Just published my latest article on Neural Networks. It’s fascinating how rapidly this field is evolving. Here is a quick snippet of my workspace setup for deep work sessions.',
     imageUrl: 'https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?auto=format&fit=crop&w=800&q=80',
     likes: 120,
-    comments: 15,
+    comments: 1,
     createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
     likedBy: ['u1', 'u3', 'u4'],
     savedBy: [],
@@ -100,7 +100,7 @@ const MOCK_POSTS: Post[] = [
     caption: 'Architecture is frozen music. 🏛️ Exploring the lines and curves of modern cityscapes.',
     imageUrl: 'https://images.unsplash.com/photo-1511818966892-d7d671e672a2?auto=format&fit=crop&w=800&q=80',
     likes: 340,
-    comments: 45,
+    comments: 0,
     createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
     likedBy: ['u1', 'u2', 'u4'],
     savedBy: [],
@@ -113,7 +113,7 @@ const MOCK_POSTS: Post[] = [
     caption: 'Homemade pasta day! 🍝 Nothing beats fresh basil and tomatoes from the garden. #Foodie #Cooking',
     imageUrl: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=800&q=80',
     likes: 89,
-    comments: 12,
+    comments: 0,
     createdAt: new Date(Date.now() - 43200000).toISOString(), // 12 hours ago
     likedBy: ['u2'],
     savedBy: [],
@@ -126,11 +126,41 @@ const MOCK_POSTS: Post[] = [
     caption: 'Street food adventures in Osaka. 🍜',
     imageUrl: 'https://images.unsplash.com/photo-1534081333815-ae5019106622?auto=format&fit=crop&w=800&q=80',
     likes: 210,
-    comments: 20,
+    comments: 0,
     createdAt: new Date(Date.now() - 500000000).toISOString(),
     likedBy: ['u3', 'u4'],
     savedBy: [],
   },
+];
+
+const MOCK_COMMENTS: Comment[] = [
+  {
+    id: 'c1',
+    postId: 'p1',
+    authorId: 'u2',
+    authorName: 'Sarah Chen',
+    authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    content: 'This looks absolutely amazing! I need to visit Japan soon.',
+    createdAt: new Date(Date.now() - 80000000).toISOString()
+  },
+  {
+    id: 'c2',
+    postId: 'p1',
+    authorId: 'u3',
+    authorName: 'Marcus Johnson',
+    authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    content: 'Great composition in this shot.',
+    createdAt: new Date(Date.now() - 70000000).toISOString()
+  },
+  {
+    id: 'c3',
+    postId: 'p2',
+    authorId: 'u1',
+    authorName: 'Alex Rivera',
+    authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    content: 'Can’t wait to read this! AI is moving so fast.',
+    createdAt: new Date(Date.now() - 3000000).toISOString()
+  }
 ];
 
 const MOCK_MESSAGES: Message[] = [
@@ -147,7 +177,7 @@ const MOCK_MESSAGES: Message[] = [
     senderId: 'u2',
     receiverId: 'u1',
     content: 'Thanks Alex! Means a lot coming from you.',
-    createdAt: new Date(Date.now() - 9000000).toISOString(),
+    createdAt: new Date(Date.now() - 90000000).toISOString(),
     isRead: true,
   },
   {
@@ -258,6 +288,12 @@ export const MockService = {
     const index = MOCK_POSTS.findIndex(p => p.id === postId);
     if (index > -1) {
        MOCK_POSTS.splice(index, 1);
+       // Also delete associated comments
+       const commentsToRemove = MOCK_COMMENTS.filter(c => c.postId === postId);
+       commentsToRemove.forEach(c => {
+         const cIndex = MOCK_COMMENTS.indexOf(c);
+         if (cIndex > -1) MOCK_COMMENTS.splice(cIndex, 1);
+       });
     }
   },
 
@@ -275,6 +311,38 @@ export const MockService = {
       post.likes++;
     }
     return { ...post };
+  },
+
+  // Comments
+  getComments: async (postId: string): Promise<Comment[]> => {
+    await delay(300);
+    return MOCK_COMMENTS.filter(c => c.postId === postId).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  },
+
+  addComment: async (postId: string, content: string, userId: string): Promise<Comment> => {
+    await delay(500);
+    const user = MOCK_USERS.find(u => u.id === userId);
+    if (!user) throw new Error("User not found");
+
+    const newComment: Comment = {
+      id: `c${Date.now()}`,
+      postId,
+      authorId: user.id,
+      authorName: user.fullName,
+      authorAvatar: user.avatarUrl,
+      content,
+      createdAt: new Date().toISOString()
+    };
+
+    MOCK_COMMENTS.push(newComment);
+    
+    // Update post comment count
+    const post = MOCK_POSTS.find(p => p.id === postId);
+    if (post) {
+      post.comments++;
+    }
+
+    return newComment;
   },
 
   // Users
@@ -330,6 +398,13 @@ export const MockService = {
           if (updates.fullName) post.authorName = updates.fullName;
           if (updates.avatarUrl) post.authorAvatar = updates.avatarUrl;
         }
+      });
+      // Update comments too
+      MOCK_COMMENTS.forEach(comment => {
+         if (comment.authorId === userId) {
+            if (updates.fullName) comment.authorName = updates.fullName;
+            if (updates.avatarUrl) comment.authorAvatar = updates.avatarUrl;
+         }
       });
     }
 

@@ -1,9 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Post } from '../types';
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Post, Comment } from '../types';
+import { MockService } from '../services/mockService';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Trash2, Send } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Button } from './Button';
 
 interface PostCardProps {
   post: Post;
@@ -15,7 +17,17 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onDelete }) =>
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(user ? post.likedBy.includes(user.id) : false);
   const [likeCount, setLikeCount] = useState(post.likes);
+  const [commentCount, setCommentCount] = useState(post.comments);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // Comment section state
+  const [isCommentsVisible, setIsCommentsVisible] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [areCommentsLoaded, setAreCommentsLoaded] = useState(false);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,6 +45,26 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onDelete }) =>
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isMenuOpen]);
+
+  // Load comments when visibility toggled
+  useEffect(() => {
+    if (isCommentsVisible && !areCommentsLoaded) {
+      loadComments();
+    }
+  }, [isCommentsVisible]);
+
+  const loadComments = async () => {
+    setIsLoadingComments(true);
+    try {
+      const data = await MockService.getComments(post.id);
+      setComments(data);
+      setAreCommentsLoaded(true);
+    } catch (e) {
+      console.error("Failed to load comments", e);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
 
   const handleLike = () => {
     if (!user) return alert('Please log in to like posts.');
@@ -54,6 +86,31 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onDelete }) =>
   const toggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const toggleComments = () => {
+    setIsCommentsVisible(!isCommentsVisible);
+  };
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCommentText.trim() || !user) return;
+
+    setIsPostingComment(true);
+    try {
+      const addedComment = await MockService.addComment(post.id, newCommentText, user.id);
+      setComments(prev => [...prev, addedComment]);
+      setCommentCount(prev => prev + 1);
+      setNewCommentText('');
+      // If we posted, ensure comments are visible and loaded state is consistent
+      setIsCommentsVisible(true);
+      setAreCommentsLoaded(true);
+    } catch (error) {
+      console.error("Failed to post comment", error);
+      alert("Failed to post comment");
+    } finally {
+      setIsPostingComment(false);
+    }
   };
 
   const handleShare = () => {
@@ -148,9 +205,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onDelete }) =>
               <Heart className={`h-6 w-6 ${isLiked ? 'fill-current' : ''}`} />
               <span className="font-medium text-sm">{likeCount}</span>
             </button>
-            <button className="flex items-center space-x-1.5 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+            <button 
+              onClick={toggleComments}
+              className={`flex items-center space-x-1.5 transition-colors ${isCommentsVisible ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'}`}
+            >
               <MessageCircle className="h-6 w-6" />
-              <span className="font-medium text-sm">{post.comments}</span>
+              <span className="font-medium text-sm">{commentCount}</span>
             </button>
             <button onClick={handleShare} className="flex items-center space-x-1.5 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
               <Share2 className="h-6 w-6" />
@@ -161,18 +221,64 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onDelete }) =>
           </button>
         </div>
         
-        {/* Simple Comment Input (Mock) */}
+        {/* Comments Section */}
+        {isCommentsVisible && (
+          <div className="mb-4 space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+            {isLoadingComments ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+              </div>
+            ) : comments.length > 0 ? (
+              <div className="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                {comments.map(comment => (
+                  <div key={comment.id} className="flex gap-3">
+                    <Link to={`/profile/${comment.authorName.toLowerCase().replace(' ', '_')}`}>
+                      <img 
+                        src={comment.authorAvatar} 
+                        alt={comment.authorName} 
+                        className="w-8 h-8 rounded-full object-cover mt-0.5" 
+                      />
+                    </Link>
+                    <div className="flex-1 bg-gray-50 dark:bg-gray-700/50 rounded-2xl px-3 py-2">
+                      <div className="flex justify-between items-start">
+                        <Link to={`/profile/${comment.authorName.toLowerCase().replace(' ', '_')}`} className="font-semibold text-sm text-gray-900 dark:text-white hover:underline">
+                          {comment.authorName}
+                        </Link>
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(comment.createdAt).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">{comment.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-gray-400 py-2">No comments yet. Be the first!</p>
+            )}
+          </div>
+        )}
+
+        {/* Comment Input */}
         <div className="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
           {user ? (
-            <>
-              <img src={user.avatarUrl} alt="Me" className="h-8 w-8 rounded-full" />
+            <form onSubmit={handlePostComment} className="flex-1 flex items-center gap-2">
+              <img src={user.avatarUrl} alt="Me" className="h-8 w-8 rounded-full flex-shrink-0" />
               <input 
                 type="text" 
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.target.value)}
                 placeholder="Add a comment..." 
                 className="flex-1 bg-transparent text-sm focus:outline-none placeholder-gray-400 text-gray-900 dark:text-gray-100"
               />
-              <button className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm hover:text-indigo-700 dark:hover:text-indigo-300">Post</button>
-            </>
+              <button 
+                type="submit"
+                disabled={!newCommentText.trim() || isPostingComment}
+                className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm hover:text-indigo-700 dark:hover:text-indigo-300 disabled:opacity-50"
+              >
+                {isPostingComment ? '...' : 'Post'}
+              </button>
+            </form>
           ) : (
              <p className="text-sm text-gray-400 w-full text-center">Log in to comment</p>
           )}
