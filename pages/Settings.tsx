@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { Moon, Sun, Bell, Shield, User, Settings as SettingsIcon } from 'lucide-react';
 
@@ -19,7 +20,7 @@ export const Settings: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-gray-900 dark:text-white">Dark Mode</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Adjust the appearance of Lumina to reduce eye strain.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Adjust the appearance of Spectra to reduce eye strain.</p>
             </div>
             <button
               onClick={toggleTheme}

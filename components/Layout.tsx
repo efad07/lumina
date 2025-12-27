@@ -47,9 +47,9 @@ export const Layout: React.FC = () => {
             <div className="flex items-center gap-8">
               <Link to="/" className="flex-shrink-0 flex items-center gap-2">
                 <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                   <span className="text-white font-bold text-lg">L</span>
+                   <span className="text-white font-bold text-lg">S</span>
                 </div>
-                <span className="font-bold text-xl tracking-tight text-gray-900 dark:text-white">Lumina</span>
+                <span className="font-bold text-xl tracking-tight text-gray-900 dark:text-white">Spectra</span>
               </Link>
               
               <div className="hidden md:flex space-x-1">
@@ -208,7 +208,7 @@ export const Layout: React.FC = () => {
             </div>
           </div>
           <div className="mt-8 border-t border-gray-200 dark:border-gray-800 pt-8 md:flex md:items-center md:justify-between">
-            <p className="text-base text-gray-400">&copy; 2024 Lumina. All rights reserved.</p>
+            <p className="text-base text-gray-400">&copy; 2024 Spectra. All rights reserved.</p>
           </div>
         </div>
       </footer>

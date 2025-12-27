@@ -102,15 +102,19 @@ export const Profile: React.FC = () => {
   };
 
   const handleDelete = async (postId: string) => {
-    if (window.confirm('Are you sure you want to delete this post?')) {
-      try {
-        await MockService.deletePost(postId);
-        // Use functional update to ensure we filter from the latest state
-        setPosts(currentPosts => currentPosts.filter(p => p.id !== postId));
-      } catch (error) {
-        console.error("Failed to delete post", error);
-        alert("Failed to delete post. Please try again.");
-      }
+    // Removed confirmation dialog to support immediate deletion request
+    
+    // Optimistic update: Remove immediately from UI
+    const previousPosts = [...posts];
+    setPosts(currentPosts => currentPosts.filter(p => p.id !== postId));
+
+    try {
+      await MockService.deletePost(postId);
+    } catch (error) {
+      console.error("Failed to delete post", error);
+      // Revert if failed
+      setPosts(previousPosts);
+      alert("Failed to delete post. Please try again.");
     }
   };
 
@@ -356,10 +360,10 @@ export const Profile: React.FC = () => {
                               e.stopPropagation();
                               handleDelete(post.id);
                             }}
-                            className="p-2 bg-red-600 rounded-full hover:bg-red-700 transition-colors cursor-pointer shadow-lg hover:scale-110 transform duration-200"
+                            className="p-2 bg-red-600/90 hover:bg-red-600 rounded-full text-white transition-all shadow-lg hover:scale-110 active:scale-95 z-50 cursor-pointer"
                             title="Delete media"
                           >
-                            <Trash2 className="w-5 h-5 text-white" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         )}
                       </div>

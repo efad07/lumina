@@ -6,7 +6,7 @@ const MOCK_USERS: User[] = [
   {
     id: 'u1',
     username: 'alex_creator',
-    email: 'alex@lumina.io',
+    email: 'alex@spectra.io',
     fullName: 'Alex Rivera',
     avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
     coverUrl: 'https://images.unsplash.com/photo-1504805572947-34fad45aed93?auto=format&fit=crop&w=1200&q=80',
@@ -21,7 +21,7 @@ const MOCK_USERS: User[] = [
   {
     id: 'u2',
     username: 'sarah_writes',
-    email: 'sarah@lumina.io',
+    email: 'sarah@spectra.io',
     fullName: 'Sarah Chen',
     avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
     coverUrl: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&w=1200&q=80',
@@ -36,7 +36,7 @@ const MOCK_USERS: User[] = [
   {
     id: 'u3',
     username: 'marcus_design',
-    email: 'marcus@lumina.io',
+    email: 'marcus@spectra.io',
     fullName: 'Marcus Johnson',
     avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
     coverUrl: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?auto=format&fit=crop&w=1200&q=80',
@@ -51,7 +51,7 @@ const MOCK_USERS: User[] = [
   {
     id: 'u4',
     username: 'elena_eats',
-    email: 'elena@lumina.io',
+    email: 'elena@spectra.io',
     fullName: 'Elena Rodriguez',
     avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
     coverUrl: 'https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&w=1200&q=80',
@@ -205,7 +205,7 @@ export const MockService = {
       fullName: userData.fullName,
       avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random&color=fff`,
       coverUrl: `https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1200&q=80`,
-      bio: 'Just joined Lumina! Writing my story...',
+      bio: 'Just joined Spectra! Writing my story...',
       followers: 0,
       following: 0,
       followingIds: [],
@@ -256,7 +256,9 @@ export const MockService = {
   deletePost: async (postId: string): Promise<void> => {
     await delay(500);
     const index = MOCK_POSTS.findIndex(p => p.id === postId);
-    if (index > -1) MOCK_POSTS.splice(index, 1);
+    if (index > -1) {
+       MOCK_POSTS.splice(index, 1);
+    }
   },
 
   toggleLike: async (postId: string, userId: string): Promise<Post> => {

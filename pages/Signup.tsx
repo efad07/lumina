@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -55,9 +56,9 @@ export const Signup: React.FC = () => {
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-             <span className="text-white font-bold text-xl">L</span>
+             <span className="text-white font-bold text-xl">S</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">Join Lumina</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Join Spectra</h2>
           <p className="text-gray-500 mt-2">Create your account to start sharing stories</p>
         </div>
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Post } from '../types';
@@ -56,10 +57,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onDelete }) =>
   };
 
   const handleShare = () => {
-    const text = `Check out this post by ${post.authorName} on Lumina!`;
+    const text = `Check out this post by ${post.authorName} on Spectra!`;
     if (navigator.share) {
       navigator.share({
-        title: 'Lumina Post',
+        title: 'Spectra Post',
         text: text,
         url: window.location.href
       });
