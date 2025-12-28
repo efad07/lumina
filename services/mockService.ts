@@ -1,235 +1,71 @@
 
 import { User, Post, Comment, Message, Conversation } from '../types';
+import { auth, db, storage } from '../lib/firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut,
+  updateProfile as updateAuthProfile
+} from 'firebase/auth';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc,
+  query, 
+  where, 
+  orderBy, 
+  arrayUnion, 
+  arrayRemove,
+  serverTimestamp,
+  limit,
+  Timestamp
+} from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-// Seed Data
-const MOCK_USERS: User[] = [
-  {
-    id: 'u1',
-    username: 'alex_creator',
-    email: 'alex@spectra.io',
-    fullName: 'Alex Rivera',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    coverUrl: 'https://images.unsplash.com/photo-1504805572947-34fad45aed93?auto=format&fit=crop&w=1200&q=80',
-    bio: 'Digital nomad & visual storyteller. Capturing moments across the globe.',
-    location: 'Kyoto, Japan',
-    website: 'alexrivera.com',
-    followers: 1240,
-    following: 350,
-    followingIds: ['u2', 'u3'],
-    joinedDate: '2023-01-15',
-  },
-  {
-    id: 'u2',
-    username: 'sarah_writes',
-    email: 'sarah@spectra.io',
-    fullName: 'Sarah Chen',
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    coverUrl: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&w=1200&q=80',
-    bio: 'Tech enthusiast and coffee addict. Writing about the future of AI.',
-    location: 'San Francisco, CA',
-    website: 'sarahwrites.tech',
-    followers: 890,
-    following: 120,
-    followingIds: ['u1', 'u4'],
-    joinedDate: '2023-03-22',
-  },
-  {
-    id: 'u3',
-    username: 'marcus_design',
-    email: 'marcus@spectra.io',
-    fullName: 'Marcus Johnson',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    coverUrl: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?auto=format&fit=crop&w=1200&q=80',
-    bio: 'Minimalist designer. Less is more.',
-    location: 'Stockholm, Sweden',
-    website: 'marcus.design',
-    followers: 2100,
-    following: 45,
-    followingIds: ['u1'],
-    joinedDate: '2022-11-10',
-  },
-  {
-    id: 'u4',
-    username: 'elena_eats',
-    email: 'elena@spectra.io',
-    fullName: 'Elena Rodriguez',
-    avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    coverUrl: 'https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&w=1200&q=80',
-    bio: 'Food critic & home cook. Exploring flavors.',
-    location: 'Madrid, Spain',
-    website: 'elenascookbook.com',
-    followers: 5400,
-    following: 300,
-    followingIds: ['u2', 'u3'],
-    joinedDate: '2023-05-01',
-  },
-];
-
-const MOCK_POSTS: Post[] = [
-  {
-    id: 'p1',
-    authorId: 'u1',
-    authorName: 'Alex Rivera',
-    authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    caption: 'The sunrise in Kyoto was absolutely breathtaking today. There is something magical about the silence of the morning before the city wakes up. 🌅 #Travel #Japan',
-    imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=800&q=80',
-    likes: 45,
-    comments: 2,
-    createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-    likedBy: ['u2', 'u3'],
-    savedBy: [],
-  },
-  {
-    id: 'p2',
-    authorId: 'u2',
-    authorName: 'Sarah Chen',
-    authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    caption: 'Just published my latest article on Neural Networks. It’s fascinating how rapidly this field is evolving. Here is a quick snippet of my workspace setup for deep work sessions.',
-    imageUrl: 'https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?auto=format&fit=crop&w=800&q=80',
-    likes: 120,
-    comments: 1,
-    createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-    likedBy: ['u1', 'u3', 'u4'],
-    savedBy: [],
-  },
-  {
-    id: 'p3',
-    authorId: 'u3',
-    authorName: 'Marcus Johnson',
-    authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    caption: 'Architecture is frozen music. 🏛️ Exploring the lines and curves of modern cityscapes.',
-    imageUrl: 'https://images.unsplash.com/photo-1511818966892-d7d671e672a2?auto=format&fit=crop&w=800&q=80',
-    likes: 340,
-    comments: 0,
-    createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-    likedBy: ['u1', 'u2', 'u4'],
-    savedBy: [],
-  },
-  {
-    id: 'p4',
-    authorId: 'u4',
-    authorName: 'Elena Rodriguez',
-    authorAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    caption: 'Homemade pasta day! 🍝 Nothing beats fresh basil and tomatoes from the garden. #Foodie #Cooking',
-    imageUrl: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=800&q=80',
-    likes: 89,
-    comments: 0,
-    createdAt: new Date(Date.now() - 43200000).toISOString(), // 12 hours ago
-    likedBy: ['u2'],
-    savedBy: [],
-  },
-  {
-    id: 'p5',
-    authorId: 'u1',
-    authorName: 'Alex Rivera',
-    authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    caption: 'Street food adventures in Osaka. 🍜',
-    imageUrl: 'https://images.unsplash.com/photo-1534081333815-ae5019106622?auto=format&fit=crop&w=800&q=80',
-    likes: 210,
-    comments: 0,
-    createdAt: new Date(Date.now() - 500000000).toISOString(),
-    likedBy: ['u3', 'u4'],
-    savedBy: [],
-  },
-];
-
-const MOCK_COMMENTS: Comment[] = [
-  {
-    id: 'c1',
-    postId: 'p1',
-    authorId: 'u2',
-    authorName: 'Sarah Chen',
-    authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    content: 'This looks absolutely amazing! I need to visit Japan soon.',
-    createdAt: new Date(Date.now() - 80000000).toISOString()
-  },
-  {
-    id: 'c2',
-    postId: 'p1',
-    authorId: 'u3',
-    authorName: 'Marcus Johnson',
-    authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    content: 'Great composition in this shot.',
-    createdAt: new Date(Date.now() - 70000000).toISOString()
-  },
-  {
-    id: 'c3',
-    postId: 'p2',
-    authorId: 'u1',
-    authorName: 'Alex Rivera',
-    authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    content: 'Can’t wait to read this! AI is moving so fast.',
-    createdAt: new Date(Date.now() - 3000000).toISOString()
+// Helper to convert Firestore Timestamp to string
+const convertDates = (data: any) => {
+  if (!data) return data;
+  const result = { ...data };
+  if (result.createdAt && typeof result.createdAt.toDate === 'function') {
+    result.createdAt = result.createdAt.toDate().toISOString();
   }
-];
-
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: 'm1',
-    senderId: 'u1',
-    receiverId: 'u2',
-    content: 'Hey Sarah! Loved your article on Neural Networks.',
-    createdAt: new Date(Date.now() - 10000000).toISOString(),
-    isRead: true,
-  },
-  {
-    id: 'm2',
-    senderId: 'u2',
-    receiverId: 'u1',
-    content: 'Thanks Alex! Means a lot coming from you.',
-    createdAt: new Date(Date.now() - 90000000).toISOString(),
-    isRead: true,
-  },
-  {
-    id: 'm3',
-    senderId: 'u3',
-    receiverId: 'u1',
-    content: 'Are you still in Kyoto?',
-    createdAt: new Date(Date.now() - 5000000).toISOString(),
-    isRead: false,
+  if (result.joinedDate && typeof result.joinedDate.toDate === 'function') {
+    result.joinedDate = result.joinedDate.toDate().toISOString();
   }
-];
-
-// Helper to simulate network delay
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const AUTO_REPLIES = [
-  "That's really interesting! Tell me more.",
-  "I was thinking the same thing recently.",
-  "Thanks for sharing!",
-  "Busy right now, but I'll get back to you soon!",
-  "Haha, totally!",
-  "Can we discuss this later?",
-  "Awesome work on your latest post.",
-  "Hello! How are you doing today?"
-];
+  return result;
+};
 
 export const MockService = {
   // Auth
   login: async (email: string, password?: string): Promise<User> => {
-    await delay(800);
-    const user = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const userCredential = await signInWithEmailAndPassword(auth, email, password || '');
+    const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
     
-    if (!user) {
-      throw new Error('User not found. Please check your email or sign up.');
+    if (!userDoc.exists()) {
+      throw new Error('User profile not found.');
     }
     
-    return user;
+    return { id: userDoc.id, ...convertDates(userDoc.data()) } as User;
   },
 
   register: async (userData: { fullName: string; email: string; password: string; username: string }): Promise<User> => {
-    await delay(1000);
-    
-    if (MOCK_USERS.some(u => u.email.toLowerCase() === userData.email.toLowerCase())) {
-      throw new Error('Email is already registered');
-    }
-
-    if (MOCK_USERS.some(u => u.username.toLowerCase() === userData.username.toLowerCase())) {
+    // Check if username taken
+    const q = query(collection(db, 'users'), where('username', '==', userData.username));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
       throw new Error('Username is already taken');
     }
 
+    const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+    const uid = userCredential.user.uid;
+    
     const newUser: User = {
-      id: `u${Date.now()}`,
+      id: uid,
       username: userData.username,
       email: userData.email,
       fullName: userData.fullName,
@@ -242,280 +78,302 @@ export const MockService = {
       joinedDate: new Date().toISOString(),
     };
 
-    MOCK_USERS.push(newUser);
+    // Save to Firestore
+    await setDoc(doc(db, 'users', uid), {
+      ...newUser,
+      joinedDate: serverTimestamp()
+    });
+
+    await updateAuthProfile(userCredential.user, {
+      displayName: userData.fullName,
+      photoURL: newUser.avatarUrl
+    });
+
     return newUser;
+  },
+
+  logout: async () => {
+    await signOut(auth);
   },
 
   // Posts
   getFeed: async (): Promise<Post[]> => {
-    await delay(600);
-    return [...MOCK_POSTS].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(20));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...convertDates(doc.data()) } as Post));
   },
   
   getTrendingPosts: async (): Promise<Post[]> => {
-    await delay(600);
-    // Return posts sorted by likes
-    return [...MOCK_POSTS].sort((a, b) => b.likes - a.likes);
+    const q = query(collection(db, 'posts'), orderBy('likes', 'desc'), limit(10));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...convertDates(doc.data()) } as Post));
   },
 
   getUserPosts: async (userId: string): Promise<Post[]> => {
-    await delay(500);
-    return MOCK_POSTS.filter((p) => p.authorId === userId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // Requires composite index if we use where + orderBy.
+    // For simplicity and avoiding index errors, we'll sort client-side.
+    const q = query(collection(db, 'posts'), where('authorId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    const posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...convertDates(doc.data()) } as Post));
+    return posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
   createPost: async (postData: Partial<Post>): Promise<Post> => {
-    await delay(1000);
-    const newPost: Post = {
-      id: `p${Date.now()}`,
-      authorId: postData.authorId!,
-      authorName: postData.authorName!,
-      authorAvatar: postData.authorAvatar!,
-      caption: postData.caption!,
-      imageUrl: postData.imageUrl,
-      videoUrl: postData.videoUrl,
+    const newPostData = {
+      authorId: postData.authorId,
+      authorName: postData.authorName,
+      authorAvatar: postData.authorAvatar,
+      caption: postData.caption,
+      imageUrl: postData.imageUrl || null,
+      videoUrl: postData.videoUrl || null,
       likes: 0,
       comments: 0,
-      createdAt: new Date().toISOString(),
       likedBy: [],
       savedBy: [],
+      createdAt: serverTimestamp()
     };
-    MOCK_POSTS.unshift(newPost);
-    return newPost;
+    
+    const docRef = await addDoc(collection(db, 'posts'), newPostData);
+    
+    return {
+      id: docRef.id,
+      ...newPostData,
+      createdAt: new Date().toISOString(),
+      imageUrl: newPostData.imageUrl || undefined,
+      videoUrl: newPostData.videoUrl || undefined,
+    } as Post;
   },
 
   deletePost: async (postId: string): Promise<void> => {
-    await delay(500);
-    const index = MOCK_POSTS.findIndex(p => p.id === postId);
-    if (index > -1) {
-       MOCK_POSTS.splice(index, 1);
-       // Also delete associated comments
-       const commentsToRemove = MOCK_COMMENTS.filter(c => c.postId === postId);
-       commentsToRemove.forEach(c => {
-         const cIndex = MOCK_COMMENTS.indexOf(c);
-         if (cIndex > -1) MOCK_COMMENTS.splice(cIndex, 1);
-       });
-    }
+    await deleteDoc(doc(db, 'posts', postId));
   },
 
-  toggleLike: async (postId: string, userId: string): Promise<Post> => {
-    await delay(300);
-    const post = MOCK_POSTS.find((p) => p.id === postId);
-    if (!post) throw new Error('Post not found');
+  toggleLike: async (postId: string, userId: string): Promise<void> => {
+    const postRef = doc(db, 'posts', postId);
+    const postSnap = await getDoc(postRef);
+    if (!postSnap.exists()) return;
 
-    const hasLiked = post.likedBy.includes(userId);
+    const postData = postSnap.data();
+    const likedBy = postData.likedBy || [];
+    const hasLiked = likedBy.includes(userId);
+
     if (hasLiked) {
-      post.likedBy = post.likedBy.filter((id) => id !== userId);
-      post.likes--;
+      await updateDoc(postRef, {
+        likedBy: arrayRemove(userId),
+        likes: (postData.likes || 1) - 1
+      });
     } else {
-      post.likedBy.push(userId);
-      post.likes++;
+      await updateDoc(postRef, {
+        likedBy: arrayUnion(userId),
+        likes: (postData.likes || 0) + 1
+      });
     }
-    return { ...post };
   },
 
   // Comments
   getComments: async (postId: string): Promise<Comment[]> => {
-    await delay(300);
-    return MOCK_COMMENTS.filter(c => c.postId === postId).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    // Sort client-side to avoid index requirement on (postId, createdAt)
+    const q = query(collection(db, 'comments'), where('postId', '==', postId));
+    const querySnapshot = await getDocs(q);
+    const comments = querySnapshot.docs.map(doc => ({ id: doc.id, ...convertDates(doc.data()) } as Comment));
+    return comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   },
 
   addComment: async (postId: string, content: string, userId: string): Promise<Comment> => {
-    await delay(500);
-    const user = MOCK_USERS.find(u => u.id === userId);
+    const user = await MockService.getUserById(userId);
     if (!user) throw new Error("User not found");
 
-    const newComment: Comment = {
-      id: `c${Date.now()}`,
+    const newCommentData = {
       postId,
       authorId: user.id,
       authorName: user.fullName,
       authorAvatar: user.avatarUrl,
       content,
-      createdAt: new Date().toISOString()
+      createdAt: serverTimestamp()
     };
 
-    MOCK_COMMENTS.push(newComment);
+    const docRef = await addDoc(collection(db, 'comments'), newCommentData);
     
-    // Update post comment count
-    const post = MOCK_POSTS.find(p => p.id === postId);
-    if (post) {
-      post.comments++;
+    const postRef = doc(db, 'posts', postId);
+    const postSnap = await getDoc(postRef);
+    if (postSnap.exists()) {
+       await updateDoc(postRef, {
+         comments: (postSnap.data().comments || 0) + 1
+       });
     }
 
-    return newComment;
+    return {
+      id: docRef.id,
+      ...newCommentData,
+      createdAt: new Date().toISOString()
+    } as Comment;
   },
 
   // Users
   getUserProfile: async (username: string): Promise<User | null> => {
-    await delay(500);
-    return MOCK_USERS.find((u) => u.username.toLowerCase() === username.toLowerCase()) || null;
+    const q = query(collection(db, 'users'), where('username', '==', username));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+    const userDoc = querySnapshot.docs[0];
+    return { id: userDoc.id, ...convertDates(userDoc.data()) } as User;
   },
 
   getUserById: async (id: string): Promise<User | null> => {
-    await delay(200);
-    return MOCK_USERS.find(u => u.id === id) || null;
+    const userDoc = await getDoc(doc(db, 'users', id));
+    if (!userDoc.exists()) return null;
+    return { id: userDoc.id, ...convertDates(userDoc.data()) } as User;
   },
   
   getSuggestedUsers: async (currentUserId?: string): Promise<User[]> => {
-    await delay(400);
-    if (!currentUserId) return MOCK_USERS.slice(0, 3);
+    const q = query(collection(db, 'users'), limit(10));
+    const querySnapshot = await getDocs(q);
+    const users = querySnapshot.docs.map(doc => ({ id: doc.id, ...convertDates(doc.data()) } as User));
     
-    // Return users the current user is NOT following, excluding themselves
-    const currentUser = MOCK_USERS.find(u => u.id === currentUserId);
-    if (!currentUser) return MOCK_USERS.slice(0, 3);
-    
-    return MOCK_USERS.filter(u => 
-      u.id !== currentUserId && !currentUser.followingIds.includes(u.id)
-    ).slice(0, 5);
+    if (!currentUserId) return users.slice(0, 3);
+    return users.filter(u => u.id !== currentUserId).slice(0, 5);
   },
   
   getFollowers: async (userId: string): Promise<User[]> => {
-    await delay(500);
-    // Find users who have this userId in their followingIds
-    return MOCK_USERS.filter(u => u.followingIds.includes(userId));
+    const q = query(collection(db, 'users'), where('followingIds', 'array-contains', userId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...convertDates(doc.data()) } as User));
   },
 
   getFollowing: async (userId: string): Promise<User[]> => {
-    await delay(500);
-    const user = MOCK_USERS.find(u => u.id === userId);
-    if (!user) return [];
-    // Find users whose IDs are in the user's followingIds
-    return MOCK_USERS.filter(u => user.followingIds.includes(u.id));
+    const user = await MockService.getUserById(userId);
+    if (!user || !user.followingIds || user.followingIds.length === 0) return [];
+    
+    const idsToFetch = user.followingIds.slice(0, 10);
+    const q = query(collection(db, 'users'), where('__name__', 'in', idsToFetch));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...convertDates(doc.data()) } as User));
   },
   
   updateProfile: async (userId: string, updates: Partial<User>): Promise<User> => {
-    await delay(800);
-    const userIndex = MOCK_USERS.findIndex(u => u.id === userId);
-    if (userIndex === -1) throw new Error('User not found');
-    
-    // In a real app, image uploads would happen separately and return URLs
-    MOCK_USERS[userIndex] = { ...MOCK_USERS[userIndex], ...updates };
-    
-    // Also update author info in posts if name/avatar changed
-    if (updates.fullName || updates.avatarUrl) {
-      MOCK_POSTS.forEach(post => {
-        if (post.authorId === userId) {
-          if (updates.fullName) post.authorName = updates.fullName;
-          if (updates.avatarUrl) post.authorAvatar = updates.avatarUrl;
-        }
-      });
-      // Update comments too
-      MOCK_COMMENTS.forEach(comment => {
-         if (comment.authorId === userId) {
-            if (updates.fullName) comment.authorName = updates.fullName;
-            if (updates.avatarUrl) comment.authorAvatar = updates.avatarUrl;
-         }
-      });
-    }
-
-    return MOCK_USERS[userIndex];
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, updates);
+    return await MockService.getUserById(userId) as User;
   },
 
   followUser: async (followerId: string, targetId: string): Promise<void> => {
-    await delay(400);
-    const follower = MOCK_USERS.find(u => u.id === followerId);
-    const target = MOCK_USERS.find(u => u.id === targetId);
+    const followerRef = doc(db, 'users', followerId);
+    const targetRef = doc(db, 'users', targetId);
 
-    if (!follower || !target) throw new Error('User not found');
-    if (follower.followingIds.includes(targetId)) return; // Already following
+    const followerSnap = await getDoc(followerRef);
+    const targetSnap = await getDoc(targetRef);
 
-    follower.followingIds.push(targetId);
-    follower.following++;
-    target.followers++;
+    if (!followerSnap.exists() || !targetSnap.exists()) return;
+
+    await updateDoc(followerRef, {
+      followingIds: arrayUnion(targetId),
+      following: (followerSnap.data().following || 0) + 1
+    });
+
+    await updateDoc(targetRef, {
+      followers: (targetSnap.data().followers || 0) + 1
+    });
   },
 
   unfollowUser: async (followerId: string, targetId: string): Promise<void> => {
-    await delay(400);
-    const follower = MOCK_USERS.find(u => u.id === followerId);
-    const target = MOCK_USERS.find(u => u.id === targetId);
+    const followerRef = doc(db, 'users', followerId);
+    const targetRef = doc(db, 'users', targetId);
 
-    if (!follower || !target) throw new Error('User not found');
-    if (!follower.followingIds.includes(targetId)) return; // Not following
+    const followerSnap = await getDoc(followerRef);
+    const targetSnap = await getDoc(targetRef);
 
-    follower.followingIds = follower.followingIds.filter(id => id !== targetId);
-    follower.following--;
-    target.followers--;
+    if (!followerSnap.exists() || !targetSnap.exists()) return;
+
+    await updateDoc(followerRef, {
+      followingIds: arrayRemove(targetId),
+      following: Math.max(0, (followerSnap.data().following || 1) - 1)
+    });
+
+    await updateDoc(targetRef, {
+      followers: Math.max(0, (targetSnap.data().followers || 1) - 1)
+    });
   },
 
   // Messaging
+  getMessages: async (currentUserId: string, otherUserId: string): Promise<Message[]> => {
+    // Removed orderBy('createdAt') to avoid index requirement with 'array-contains'
+    const q = query(
+      collection(db, 'messages'),
+      where('participants', 'array-contains', currentUserId)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    const messages = snapshot.docs
+      .map(doc => ({ id: doc.id, ...convertDates(doc.data()) } as Message))
+      .filter(m => 
+        (m.senderId === currentUserId && m.receiverId === otherUserId) || 
+        (m.senderId === otherUserId && m.receiverId === currentUserId)
+      );
+    
+    // Client-side sort
+    return messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  },
+  
   getConversations: async (userId: string): Promise<Conversation[]> => {
-    await delay(400);
+    // Removed orderBy('createdAt') to avoid index requirement
+    const q = query(
+      collection(db, 'messages'), 
+      where('participants', 'array-contains', userId)
+    );
     
-    // 1. Get all messages involving this user
-    const userMessages = MOCK_MESSAGES.filter(m => m.senderId === userId || m.receiverId === userId);
+    const snapshot = await getDocs(q);
+    const messages = snapshot.docs
+      .map(doc => ({ id: doc.id, ...convertDates(doc.data()) } as Message))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Sort descending
     
-    // 2. Group by the OTHER user
     const distinctUserIds = new Set<string>();
-    userMessages.forEach(m => {
+    messages.forEach(m => {
       distinctUserIds.add(m.senderId === userId ? m.receiverId : m.senderId);
     });
 
     const conversations: Conversation[] = [];
     
-    // 3. Build Conversation objects
     for (const otherId of distinctUserIds) {
-      const otherUser = MOCK_USERS.find(u => u.id === otherId);
+      const otherUser = await MockService.getUserById(otherId);
       if (otherUser) {
-        const msgs = userMessages.filter(m => m.senderId === otherId || m.receiverId === otherId);
-        const lastMessage = msgs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-        const unreadCount = msgs.filter(m => m.receiverId === userId && !m.isRead).length;
+        const userMsgs = messages.filter(m => 
+          (m.senderId === userId && m.receiverId === otherId) || 
+          (m.senderId === otherId && m.receiverId === userId)
+        );
         
-        conversations.push({
-          userId: otherId,
-          user: otherUser,
-          lastMessage,
-          unreadCount
-        });
+        if (userMsgs.length > 0) {
+          const lastMessage = userMsgs[0]; 
+          conversations.push({
+             userId: otherId,
+             user: otherUser,
+             lastMessage,
+             unreadCount: 0 
+          });
+        }
       }
     }
-
-    return conversations.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
-  },
-
-  getMessages: async (currentUserId: string, otherUserId: string): Promise<Message[]> => {
-    // Note: No delay here for polling smoothness, or very small
-    // Mark messages as read
-    MOCK_MESSAGES.forEach(m => {
-      if (m.receiverId === currentUserId && m.senderId === otherUserId && !m.isRead) {
-        m.isRead = true;
-      }
-    });
-
-    return MOCK_MESSAGES.filter(m => 
-      (m.senderId === currentUserId && m.receiverId === otherUserId) ||
-      (m.senderId === otherUserId && m.receiverId === currentUserId)
-    ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    
+    return conversations;
   },
 
   sendMessage: async (senderId: string, receiverId: string, content: string): Promise<Message> => {
-    const newMessage: Message = {
-      id: `m${Date.now()}`,
+    const newMessageData = {
       senderId,
       receiverId,
       content,
-      createdAt: new Date().toISOString(),
-      isRead: false
+      createdAt: serverTimestamp(),
+      isRead: false,
+      participants: [senderId, receiverId]
     };
     
-    MOCK_MESSAGES.push(newMessage);
+    const docRef = await addDoc(collection(db, 'messages'), newMessageData);
+    return { id: docRef.id, ...newMessageData, createdAt: new Date().toISOString() } as Message;
+  },
 
-    // Simulate "Real-time" auto reply from the other user
-    // We only reply if the receiver is not the current user (mock check)
-    // Random delay between 2-5 seconds
-    const replyDelay = Math.random() * 3000 + 2000;
-    setTimeout(() => {
-      const randomReply = AUTO_REPLIES[Math.floor(Math.random() * AUTO_REPLIES.length)];
-      const replyMessage: Message = {
-        id: `m${Date.now() + 1}`,
-        senderId: receiverId,
-        receiverId: senderId,
-        content: randomReply,
-        createdAt: new Date().toISOString(),
-        isRead: false
-      };
-      MOCK_MESSAGES.push(replyMessage);
-    }, replyDelay);
-
-    return newMessage;
+  // Storage
+  uploadFile: async (file: File): Promise<string> => {
+    const storageRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    return await getDownloadURL(snapshot.ref);
   }
 };

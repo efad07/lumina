@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +13,7 @@ export const CreatePost: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Redirect if not logged in
   React.useEffect(() => {
@@ -23,6 +25,7 @@ export const CreatePost: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       // Create a local preview
       const objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
@@ -33,6 +36,7 @@ export const CreatePost: React.FC = () => {
   const removeMedia = () => {
     setPreviewUrl(null);
     setMediaType(null);
+    setSelectedFile(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,22 +45,33 @@ export const CreatePost: React.FC = () => {
 
     setIsUploading(true);
     
-    // In a real app, we would upload the file to storage here.
-    // For this demo, we use the blob URL so you can see your uploaded content immediately in the session.
-    // If we wanted to persist data across reloads in a mock without a real backend, we'd need to mock base64 or external URLs.
-    // For now, let's use the blob previewUrl for the session.
+    try {
+      let uploadedUrl: string | undefined = undefined;
 
-    await MockService.createPost({
-      authorId: user.id,
-      authorName: user.fullName,
-      authorAvatar: user.avatarUrl,
-      caption,
-      imageUrl: mediaType === 'image' ? previewUrl! : undefined,
-      videoUrl: mediaType === 'video' ? previewUrl! : undefined,
-    });
+      if (selectedFile) {
+        uploadedUrl = await MockService.uploadFile(selectedFile);
+      } else if (previewUrl) {
+        // Fallback if preview URL was set differently (not via file input in this flow)
+        // In this implementation, we only support direct file uploads
+        uploadedUrl = undefined;
+      }
 
-    setIsUploading(false);
-    navigate('/');
+      await MockService.createPost({
+        authorId: user.id,
+        authorName: user.fullName,
+        authorAvatar: user.avatarUrl,
+        caption,
+        imageUrl: mediaType === 'image' ? uploadedUrl : undefined,
+        videoUrl: mediaType === 'video' ? uploadedUrl : undefined,
+      });
+
+      setIsUploading(false);
+      navigate('/');
+    } catch (error) {
+      console.error("Failed to create post", error);
+      setIsUploading(false);
+      alert("Failed to create post. Please try again.");
+    }
   };
 
   return (
