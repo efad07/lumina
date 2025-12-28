@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -27,7 +26,7 @@ const App: React.FC = () => {
             <Route path="profile/:username" element={<Profile />} />
             <Route path="create" element={<CreatePost />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="dashboard" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
       </HashRouter>

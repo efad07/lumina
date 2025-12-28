@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { MockService } from '../services/mockService';
@@ -18,26 +17,48 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading true to check auth status
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          // Fetch user details from Firestore
-          const appUser = await MockService.getUserById(firebaseUser.uid);
-          setUser(appUser);
-        } catch (e) {
-          console.error("Error fetching user profile", e);
-        }
-      } else {
-        setUser(null);
-      }
-      setIsLoading(false);
-    });
+    let isMounted = true;
+    
+    const unsubscribe = onAuthStateChanged(
+      auth, 
+      async (firebaseUser) => {
+        if (!isMounted) return;
+        
+        // Reset error on state change
+        setError(null);
 
-    return () => unsubscribe();
+        if (firebaseUser) {
+          try {
+            // Fetch user details from Firestore
+            const appUser = await MockService.getUserById(firebaseUser.uid);
+            if (isMounted) setUser(appUser);
+          } catch (e) {
+            console.error("Error fetching user profile", e);
+            // Even if profile fetch fails, we stop loading. 
+          }
+        } else {
+          if (isMounted) setUser(null);
+        }
+        
+        if (isMounted) setIsLoading(false);
+      },
+      (err) => {
+        console.error("Auth subscription error", err);
+        if (isMounted) {
+          setError("Authentication service unavailable");
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -69,8 +90,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await MockService.logout();
-    setUser(null);
+    setIsLoading(true);
+    try {
+      await MockService.logout();
+      setUser(null);
+    } catch (e) {
+      console.error("Logout error", e);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

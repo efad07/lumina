@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -44,24 +43,28 @@ export const Messages: React.FC = () => {
     }
   }, [activeConversationId, user]);
 
-  // Polling for "Real-time" effect
+  // Polling for "Real-time" effect - Optimized to avoid dependency churning
   useEffect(() => {
     if (!activeConversationId || !user) return;
 
+    // Use a longer interval to save resources (5s instead of 3s)
     const intervalId = setInterval(() => {
-      // Silently refresh messages
+      // Refresh messages
       MockService.getMessages(user.id, activeConversationId).then(msgs => {
-        // Simple diff check could be better, but replacing is fine for mock
-        if (msgs.length !== messages.length) {
-          setMessages(msgs);
-        }
+        setMessages(prev => {
+          // Only update state if length is different to avoid re-renders
+          if (prev.length !== msgs.length) {
+            return msgs;
+          }
+          return prev;
+        });
       });
-      // Also refresh sidebar to update last message
+      // Refresh conversations
       MockService.getConversations(user.id).then(setConversations);
-    }, 3000); // Check every 3 seconds
+    }, 5000); 
 
     return () => clearInterval(intervalId);
-  }, [activeConversationId, user, messages.length]);
+  }, [activeConversationId, user]); // Removed messages.length dependency to prevent interval reset loop
 
   // Auto-scroll to bottom
   useEffect(() => {
